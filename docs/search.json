@@ -1,0 +1,72 @@
+[
+  {
+    "objectID": "projects/index.html",
+    "href": "projects/index.html",
+    "title": "Projects",
+    "section": "",
+    "text": "Currently, I am developing a bioinformatics pipeline to assess the editing efficiency and off-target effects of cir-arRNAs using long-read sequencing. This framework will preserve transcript-specific information and enable accurate evaluation of RNA editing outcomes. This research merges my computational skills with molecular biology, supporting the lab’s efforts in RNA biology and advancing my understanding of gene regulatory processes."
+  },
+  {
+    "objectID": "projects/index.html#editing-efficiency-by-cir-arrnas",
+    "href": "projects/index.html#editing-efficiency-by-cir-arrnas",
+    "title": "Projects",
+    "section": "",
+    "text": "Currently, I am developing a bioinformatics pipeline to assess the editing efficiency and off-target effects of cir-arRNAs using long-read sequencing. This framework will preserve transcript-specific information and enable accurate evaluation of RNA editing outcomes. This research merges my computational skills with molecular biology, supporting the lab’s efforts in RNA biology and advancing my understanding of gene regulatory processes."
+  },
+  {
+    "objectID": "projects/index.html#scrnaseq-cell-type-indentifier-benchmarking-for-hspcs",
+    "href": "projects/index.html#scrnaseq-cell-type-indentifier-benchmarking-for-hspcs",
+    "title": "Projects",
+    "section": "scRNAseq Cell-Type Indentifier Benchmarking for HSPCs",
+    "text": "scRNAseq Cell-Type Indentifier Benchmarking for HSPCs\nThrough the UCLA Bruins-in-Genomics Summer Research Program, I compared single-cell RNA sequencing classifiers for hematopoietic stem and progenitor cells (HSPCs). I evaluated cell-type correspondence across whole and HSPC-purified datasets. Our results demonstrated the need for resolution-matched identifiers, a critical insight for scRNA-seq studies."
+  },
+  {
+    "objectID": "projects/index.html#pipeline-for-viral-population-prediction",
+    "href": "projects/index.html#pipeline-for-viral-population-prediction",
+    "title": "Projects",
+    "section": "Pipeline for Viral Population Prediction",
+    "text": "Pipeline for Viral Population Prediction\nI was a student researcher through the RUSH University Summer Research Program. Here, I learnt topics in bioinformatics. First, I designed a pipeline to predict bacteriophage populations from metagenomics data to use in a machine learning model. Then, I investigated lncRNA expression across mice under eight lifestyle conditions."
+  },
+  {
+    "objectID": "projects/index.html#inheritance-of-phage-immune-genes",
+    "href": "projects/index.html#inheritance-of-phage-immune-genes",
+    "title": "Projects",
+    "section": "Inheritance of Phage Immune Genes",
+    "text": "Inheritance of Phage Immune Genes\nDuring my freshman year, I participated in the HHMI SEA-PHAGES program, which introduced me to bioinformatics. I characterized and annotated the genomes of two novel actinobacteriophages. I also designed an independent research project that investigated the conserved inheritance of immune genes in phages. We hypothesized that certain integrase-repressor combinations were deleterious to phage evolution, causing their strict paired inheritance. Furthermore, if these pairs were well defined between different families of phages, they could offer a better method to classify phages."
+  },
+  {
+    "objectID": "index.html",
+    "href": "index.html",
+    "title": "Aryahi Deorukhkar",
+    "section": "",
+    "text": "Github\n  \n  \n    \n     LinkedIn\n  \n  \n    \n     Email"
+  },
+  {
+    "objectID": "index.html#welcome-to-my-website",
+    "href": "index.html#welcome-to-my-website",
+    "title": "Aryahi Deorukhkar",
+    "section": "Welcome to my website!",
+    "text": "Welcome to my website!\nHello, I am Aryahi, an undergraduate student at Case Western Reserve University. I come from a quite culturally diverse background, having lived in India, Germany, and now the United States. I am currently a senior majoring in Biochemistry with specializations in cancer biology, quantitative health science, and metabolism. I hope to go to grad school next year and pursue a PhD in genomics and bioinformatics.\nIn grad school, I aim to further analyze large genetic datasets and find insightful conclusions about health and disease. To do this, I want to create new bioinformatics techniques that can be used for sequencing data. RNA biology is another exciting field that I am interested in. We can take advantage of the dual function of RNA as an information-carrying molecule with enzymatic properties to regulate gene expression.\nI hope that this website is informative for you to get to know more about me and my scholarly interests! Please contact me on my email for further inquiries or questions."
+  },
+  {
+    "objectID": "cv/index.html",
+    "href": "cv/index.html",
+    "title": "Curriculum vitae",
+    "section": "",
+    "text": "Download current CV\n  \n\n\n  \n\n\nView the tutorial for this template (+ download link)"
+  },
+  {
+    "objectID": "interests/index.html",
+    "href": "interests/index.html",
+    "title": "Interests",
+    "section": "",
+    "text": "I love to draw, but have not had too much time to do it in college. Here are two of my pieces:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nI enjoy cooking food for me and my friends. I cook Indian food on a daily basis, but can cook other cuisines and bake as well.\n\n\n\nI mostly read fiction, but I sometimes pick up a few non-fiction books. Currently, I am reading:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nI serve as the Editor-in-Chief for Discussions. We just published our most recent edition!\n\nRead Discussion's Latest Edition"
+  },
+  {
+    "objectID": "interests/index.html#outside-of-school-aryahi-enjoys-many-activities",
+    "href": "interests/index.html#outside-of-school-aryahi-enjoys-many-activities",
+    "title": "Interests",
+    "section": "",
+    "text": "I love to draw, but have not had too much time to do it in college. Here are two of my pieces:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nI enjoy cooking food for me and my friends. I cook Indian food on a daily basis, but can cook other cuisines and bake as well.\n\n\n\nI mostly read fiction, but I sometimes pick up a few non-fiction books. Currently, I am reading:\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\n\nI serve as the Editor-in-Chief for Discussions. We just published our most recent edition!\n\nRead Discussion's Latest Edition"
+  }
+]

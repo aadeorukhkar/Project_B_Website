@@ -1,0 +1,39 @@
+---
+title: "Interests"
+---
+
+## Outside of school, Aryahi enjoys many activities:
+
+### Drawing 
+I love to draw, but have not had too much time to do it in college. Here are two of my pieces:
+
+::: {layout-ncol=2}
+
+![](Red.png)
+
+![](Black.png)
+
+:::
+
+### Cooking and Baking
+I enjoy cooking food for me and my friends. I cook Indian food on a daily basis, but can cook other cuisines and bake as well. 
+
+### Reading
+I mostly read fiction, but I sometimes pick up a few non-fiction books. Currently, I am reading:
+
+::: {layout-ncol=2}
+
+![](Gut.png)
+
+![](Locke.png)
+
+:::
+
+### Discussions, CWRU's undergraduate research journal
+I serve as the Editor-in-Chief for Discussions. We just published our most recent edition!
+
+```{=html}
+<div  style="margin: 30px; text-align: center;">
+<a class="btn btn-primary" href="https://commons.case.edu/discussions/vol21/iss1/1/" role="button" target="_blank" style="padding: 15px 30px;">Read Discussion's Latest Edition</a>
+</div>
+```

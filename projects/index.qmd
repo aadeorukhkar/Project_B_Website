@@ -1,0 +1,25 @@
+---
+title: Projects
+---
+
+## Editing Efficiency by cir-arRNAs
+
+Currently, I am developing a bioinformatics pipeline to assess the editing efficiency and off-target effects of cir-arRNAs using long-read sequencing. This framework will preserve transcript-specific information and enable accurate evaluation of RNA editing outcomes. This research merges my computational skills with molecular biology, supporting the lab’s efforts in RNA biology and advancing my understanding of gene regulatory processes.
+
+----
+
+## scRNAseq Cell-Type Indentifier Benchmarking for HSPCs
+
+Through the UCLA Bruins-in-Genomics Summer Research Program, I compared single-cell RNA sequencing classifiers for hematopoietic stem and progenitor cells (HSPCs). I evaluated cell-type correspondence across whole and HSPC-purified datasets. Our results demonstrated the need for resolution-matched identifiers, a critical insight for scRNA-seq studies. 
+
+----
+
+## Pipeline for Viral Population Prediction
+
+I was a student researcher through the RUSH University Summer Research Program. Here, I learnt topics in bioinformatics. First, I designed a pipeline to predict bacteriophage populations from metagenomics data to use in a machine learning model. Then, I investigated lncRNA expression across mice under eight lifestyle conditions. 
+
+----
+## Inheritance of Phage Immune Genes 
+
+During my freshman year, I participated in the HHMI SEA-PHAGES program, which introduced me to bioinformatics. I characterized and annotated the genomes of two novel actinobacteriophages. I also designed an independent research project that investigated the conserved inheritance of immune genes in phages. We hypothesized that certain integrase-repressor combinations were deleterious to phage evolution, causing their strict paired inheritance. Furthermore, if these pairs were well defined between different families of phages, they could offer a better method to classify phages. 
+

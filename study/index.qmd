@@ -1,0 +1,769 @@
+---
+title: "Analyzing Systolic Blood Pressure Distributions and Risk of Developing Hypertension with Obesity in American adults aged 21 - 79 from 2017 to 2020 (pre-pandemic)"
+author: "Aryahi Deorukhkar"
+date: Last Modified
+format: 
+  html:
+    toc: true
+    number-sections: true
+    embed-resources: true
+    date-format: iso
+    theme: paper
+    highlight-style: textmate
+---
+
+# Setup and Data Ingest
+
+## Load packages
+
+```{r warning=FALSE}
+library(haven)
+library(janitor)
+library(datawizard)
+library(labelled)
+library(Hmisc)
+library(ggplot2)
+library(patchwork)
+library(magrittr)
+library(car)
+library(broom)
+library(kableExtra)
+library(tidyverse)
+```
+
+## Import data sets
+
+Note: data from the NHANES dataset from the CDC website for 2017 - Pre-pandemic 2020 was downloaded and manually loaded for two reasons. First, the nhanesa package was removed from R. Second, the alternate RNHANES package only has data till 2012. While analysis with 2011 - 2012 data could be conducted, the functions of this package do not allow for successful import of the data. Therefore, I am simply downloading the data from the CDC website and assembling my tibble.
+
+```{r eval=FALSE}
+s1_demographics <- read_xpt("P_DEMO.xpt") %>% tibble()
+s1_BMX <- read_xpt("P_BMX.xpt") %>% tibble()
+s1_BPQ <- read_xpt("P_BPQ.xpt") %>% tibble()
+s1_BPXO <- read_xpt("P_BPXO.xpt") %>% tibble()
+
+s1 <- s1_demographics %>%
+  left_join(s1_BMX, by = "SEQN") %>%
+  left_join(s1_BPQ, by = "SEQN") %>%
+  left_join(s1_BPXO, by = "SEQN")
+```
+
+# Cleaning the Data
+
+```{r eval=FALSE}
+#Choose variables required for analysis only, along with the respondent sequence number
+s1 <- s1[,c("SEQN", "RIDAGEYR", "RIAGENDR", "RIDRETH3", "BPXOSY1", "BPXOSY3", "BMXBMI", "BPQ020")]
+
+#filter for age (21 - 79)
+s1 <- s1 %>% filter(RIDAGEYR >= 21 & RIDAGEYR <= 79)
+
+#clean names
+s1 <- s1 %>% rename(
+  ID = SEQN,
+  Age = RIDAGEYR, 
+  BiologicalSex = RIAGENDR, 
+  Race = RIDRETH3,
+  Systolic_1 = BPXOSY1,
+  Systolic_3 = BPXOSY3, 
+  Obese = BMXBMI,
+  Hypertension = BPQ020)
+
+#Factor categorical variables
+s1 <- s1 %>% 
+  mutate(
+    BiologicalSex = factor(BiologicalSex, 
+                           levels = c(1, 2), 
+                           labels = c("Male", "Female")),
+    Race = factor(Race, 
+                  levels = c(1, 2, 3, 4, 6, 7), 
+                  labels = c("Mexican American", "Other Hispanic", "Non-Hispanic White", "Non-Hispanic Black", "Non-Hispanic Asian", "Other")),
+    Hypertension = factor(Hypertension,
+                          levels = c(1, 2, 9),
+                          labels = c("Yes", "No", "Unknown")),
+    Obese = factor(ifelse(Obese > 30, "Yes", "No"), 
+                   levels = c("Yes", "No")))
+
+#Relevel hypertension to make unknowns into NAs
+levels(s1$Hypertension)[levels(s1$Hypertension) == "Unknown"] <- NA
+
+# Need to filter on complete cases for systolic blood pressures 1 and 3 as they are paired data
+s1 <- s1 %>% filter(complete.cases(Systolic_1, Systolic_3))
+
+#Take the difference between the systolic blood pressure pairs
+s1$Systolic_diff <- s1$Systolic_1 - s1$Systolic_3
+
+# Add labels for mutated variables again
+var_label(s1$BiologicalSex) <- "Biological sex"
+var_label(s1$Race) <- "Reported race"
+var_label(s1$Obese) <- "Obesity status (BMI > 30)"
+var_label(s1$Hypertension) <- "Ever diagnosed with hypertension (Yes/No)"
+var_label(s1$Systolic_diff) <- "The difference of 1st and 3rd systolic bp"
+```
+
+```{r eval=FALSE}
+saveRDS(s1, "Study1_Data.RDS")
+```
+
+# Codebook and Data Description
+
+Import the tibble for analysis
+
+```{r}
+s1 <- readRDS("Study1_Data.RDS")
+```
+
+Data for 7060 adults ages 21 - 79 participating in NHANES 2017-2020 (pre-pandemic) with complete data for systolic blood pressure and containing the variables listed below.
+
+## What is the data?
+
+Here, data from the NHANES data set compiled by the CDC is being used to describe the following variables. The data combines all observations from 2017 to 2020 before the pandemic. The data was cleaned and filtered as outlined in the previous section.
+
+The **s1** tibble contains 8428 respondents and 8 variables.
+
+| Variable | Type | Old Name | Description | Years |
+|:-------------:|:-------------:|:-------------:|:-------------:|:-------------:|
+| **ID** | ID | `SEQN` | Respondent sequence number | 2017-2020 |
+| **Age** | Quantitative | `RIDAGEYR` | Age in years at screening | 2017-2020 |
+| **BiologicalSex** | Binary | `RIAGENDR` | Biological sex of the participant (Male/Female) | 2017-2020 |
+| **Race** | Multi-categorical | `RIDRETH3` | Reported race of the participant | 2017-2020 |
+| **Systolic_1** | Quantitative | `BPXOSY1` | First oscillometric systolic blood pressure measurement (mmHg) | 2017-2020 |
+| **Systolic_3** | Quantitative | `BPXOSY3` | Third oscillometric systolic blood pressure measurement (mmHg) | 2017-2020 |
+| **Obese** | Binary | `BMXBMI` | Indicates whether BMI \> 30 (True/False) | 2017-2020 |
+| **Hypertension** | Binary | `BPQ020` | Was the participant ever diagnosed with hypertension (Yes/No) | 2017-2020 |
+| **Systolic_diff** | Quantitative | NA | The difference between the 1st and the 3rd systolic bp readings (mmHg) | 2017-2020 |
+
+## Analytic Tibble
+
+```{r}
+s1
+```
+
+## Data Summary
+
+```{r warning=FALSE}
+describe_distribution(s1)
+```
+
+```{r}
+data_codebook(s1)
+```
+
+Missing values are only present in the systolic blood pressure 1 & 3, obese, and hypertension variables. There are no missing values for demographics.
+
+```{r}
+describe(s1)
+```
+
+# Analysis A: Comparing 2 Means with Paired Samples
+
+## Question
+
+This analysis aims to answer the question, does systolic blood pressure significantly decrease with repeated measurements in adults in the United States from 2017 to pre-pandemic 2020? This research question is inspired by my experience as a volunteer in urgent care, where I assisted with truck driver physical exams. These exams include blood pressure requirements, and if the initial reading was elevated, the nurses advised patients to sit and rest for five minutes before retaking their blood pressure. This practice accounts for potential increases in heart rate caused by nervousness or recent physical activity. Therefore, inspired by this observation, I want to explore whether a similar pattern occurs between the first and third oscillometric readings of systolic blood pressure.
+
+H0: The mean difference between the first and third systolic blood pressure readings is zero. (mu1 - mu3 = 0) 
+
+
+HA: The mean difference between the first and third systolic blood pressure readings is greater than zero.(mu1 - mu3 \> 0)
+
+## Describe the data
+
+Here, the means of the systolic blood pressure (mmHg) between the first and the third oscillometric readings are being compared.
+
+Visualize the distribution of systolic blood pressure:
+
+```{r fig.height=4, fig.width=5}
+ggplot(s1, aes(x = factor(1), y = Systolic_diff)) + 
+  geom_violin(trim = FALSE, fill = "lightblue", alpha = 0.5) + 
+  geom_boxplot(width = 0.2, outlier.shape = NA, color = "black") + 
+  labs(title = "Distribution of Systolic Blood Pressure Differences (First - Third Reading)",
+       x = "Systolic Blood Pressure Difference",
+       y = "Difference (mmHg)") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9)) 
+```
+
+Import the function to describe this distribution
+
+```{r}
+`lovedist` <- function(x) {
+  tibble::tibble(
+    n = length(x),
+    miss = sum(is.na(x)),
+    mean = mean(x, na.rm = TRUE),
+    sd = sd(x, na.rm = TRUE),
+    med = median(x, na.rm = TRUE),
+    mad = mad(x, na.rm = TRUE),
+    min = min(x, na.rm = TRUE),
+    q25 = quantile(x, 0.25, na.rm = TRUE),
+    q75 = quantile(x, 0.75, na.rm = TRUE),
+    max = max(x, na.rm = TRUE),
+  )
+}
+```
+
+The distribution of values for differences in systolic pressures:
+
+```{r}
+lovedist(s1$Systolic_diff)
+```
+
+At the first glance, there seems to be no difference in the difference of the systolic blood pressures given the distribution of the violin plot and the median and mean of the distribution being practically zero. The IQR is 8 and there are large positive and negative outliers are present in the data.
+
+## Main analysis
+
+We want to construct a 90% CI for the difference in systolic blood pressure between the first and third readings.
+
+### Check assumptions of the t-test
+
+The Systolic_diff variable is independent and has a large number of observations.
+
+Check Normality:
+
+```{r}
+# Histogram
+p1 <- ggplot(s1, aes(x = Systolic_diff)) +
+  geom_histogram(binwidth = 1, fill = "lightblue", color = "black") +
+  labs(title = "Histogram of Systolic Blood Pressure Differences", 
+       x = "Systolic Blood Pressure Difference (mmHg)", y = "Frequency") +
+  theme_minimal() + 
+  theme(plot.title = element_text(size = 9)) 
+
+# Q-Q Plot
+p2 <-ggplot(s1, aes(sample = Systolic_diff)) +
+  geom_qq() +
+  geom_qq_line() +
+  labs(title = "Q-Q Plot of Systolic Blood Pressure Differences") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9)) 
+
+p1 + p2
+```
+
+Normality was not observed through the Q-Q plot. We can see that the data fits the expected trend line very closely at the middle, however it deviates from the trend at the ends.
+
+This makes sense as we know that large positive and negative outliers are present in the data. In this case, it makes sense to remove the outliers as they most likely represent differences in blood pressure due to malfunctions in blood pressure apparatus. Having differences like 70 mmHg are not biologically possible the short period of time between readings. If this was the case, then the patient would soon be dead. Therefore, we will filter out observations that are outliers. From the section above, we know that the boundary for outliers is \[-16, 16\]. The filtering of data is appropriate in this case as we are interested in a biological phenomenon and excluding systematic errors reduces the effect of confounding variables.
+
+```{r}
+#Filter out outliers
+s1_A1 <- s1 %>% filter(Systolic_diff >= -16 & Systolic_diff <= 16)
+```
+
+6881 observations were retained from 7060 observations.
+
+Check for normality again:
+
+```{r}
+# Histogram
+p1 <- ggplot(s1_A1, aes(x = Systolic_diff)) +
+  geom_histogram(binwidth = 1, fill = "lightblue", color = "black") +
+  labs(title = "Histogram of Systolic Blood Pressure Differences", 
+       x = "Systolic Blood Pressure Difference (mmHg)", y = "Frequency") +
+  theme_minimal() + 
+  theme(plot.title = element_text(size = 9)) 
+
+# Q-Q Plot
+p2 <-ggplot(s1_A1, aes(sample = Systolic_diff)) +
+  geom_qq() +
+  geom_qq_line() +
+  labs(title = "Q-Q Plot of Systolic Blood Pressure Differences") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9)) 
+
+p1 + p2
+```
+
+As the observed trend in the Q-Q plot is linear and largely follows the expected trend line, we can say that the data fulfills the normality condition. This is further confirmed by the unimodal, bell-shaped curve observed in the histogram.
+
+### t-test results
+
+```{r}
+t.test(s1_A1$Systolic_diff, conf.level = 0.90)
+```
+
+## Conclusions
+
+The 90% confidence interval for the difference in systolic blood pressure between the first and third readings, excluding outliers, is (0.1, 0.3). This means that we are 90% confident that the true mean difference in systolic blood pressure between the first and third readings lies between 0.1 mmHg and 0.3 mmHg. As this interval contains does not contain zero, we can say that there is a significant difference between the first and the third systolic bp readings. There is evidence to reject the null hypothesis. However, this difference is not biologically relevant. Furthermore, a difference of at most 0.3 mmHg not would be detectable by oscillometers, which report whole numbers. Therefore, we can conclude that a significant and small, but biologically irrelevant difference between the first and third readings exists. Having patients settle for longer during consecutive blood pressure readings does slightly lower their systolic bp, but not to make a biological difference. Future analysis could analyze whether there is a difference in the systolic blood pressure when it is taken while sitting up or laying down, which should relax the body more. This would provide insights into the biology of those that are chronically bedridden.
+
+# Analysis B: Compare two means/medians using independent samples
+
+## Question
+
+This analysis aims to answer the question, is there is a significant difference in systolic blood pressure (first reading) between male and female adults in the United States from 2017 to pre-pandemic 2020? This question stems from the fact that biological sex differences in systolic blood pressure have been observed in clinical practice and research, where males tend to exhibit higher blood pressure compared to females. The goal is to explore if this trend is present on a global level using the NHANES dataset.
+
+H0: There is no difference in the mean systolic blood pressure between males and females. (mu_male - mu_female = 0) 
+
+
+HA: The mean systolic blood pressure is higher in males than females. mu_male - mu_female \> 0)
+
+## Describing the Data
+
+In this analysis, we will compare the first oscillometric systolic blood pressure reading (mmHg) for males and females in the s1 dataset.
+
+Visualize the distribution of systolic blood pressure for males and females:
+
+```{r}
+ggplot(s1, aes(x = BiologicalSex, y = Systolic_1)) + 
+  geom_violin(aes(fill = BiologicalSex), trim = FALSE, alpha = 0.5, color = NA) + 
+  geom_boxplot(fill = c("Male" = "coral", "Female" = "lightblue"), color = "black", width = 0.2) + 
+  scale_fill_manual(values = c("Male" = "coral", "Female" = "lightblue")) +
+  labs(title = "Distribution of Systolic Blood Pressure (First Reading) by Biological Sex",
+       x = "Biological Sex",
+       y = "Systolic Blood Pressure (mmHg)",
+       fill = "Biological Sex") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 10))
+```
+
+Distribution statistics by biological sex:
+
+```{r warning=FALSE}
+male <- s1 %>% filter(BiologicalSex == "Male")
+female <- s1 %>% filter(BiologicalSex == "Female")
+lovedist(male$Systolic_1)
+lovedist(female$Systolic_1)
+```
+
+Through the violin plot and the summary statistics, it is observed that the mean systolic blood pressure for males (127.1 mmHg) is higher than that of females (121.4 mmHg). For both datasets, there are a few low outliers and more higher outliers. Therefore, both of the datasets are skewed right. Furthermore, men and women make up roughly half of the data each, thereby having similar population sizes to compare with each other.
+
+## Main Analysis
+
+We would like to create a 90% CI for the difference in means for systolic blood pressure between males and females using a t-test.
+
+### Check the assumptions of the t-test
+
+Observations in the Systolic_1 variable are independent from each other and the sample size is large.
+
+Check for normality by biological sex:
+
+```{r fig.height=5, fig.width=10}
+# Histogram for Sys_1 by gender
+p1 <- ggplot(s1, aes(x = Systolic_1, fill = BiologicalSex)) +
+  geom_histogram(binwidth = 1, color = "black", alpha = 0.5) +
+  labs(title = "Histogram of Systolic Blood Pressure by BiologicalSex", 
+       x = "Systolic Blood Pressure (mmHg)", y = "Frequency") +
+  theme_minimal() + 
+  theme(plot.title = element_text(size = 9))
+
+# Q-Q Plot by gender
+p2 <- ggplot(s1, aes(sample = Systolic_1, color = BiologicalSex)) +
+  geom_qq() +
+  geom_qq_line() +
+  labs(title = "Q-Q Plot of Systolic Blood Pressure by BiologicalSex") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9)) 
+
+p1 + p2
+```
+
+Through both, the histogram and the Q-Q plot for both biological sexes, we can see that the distribution of systolic blood pressure is skewed right. Since the observed trend in the Q-Q plot deviates from the expected line, the normality assumption cannot be met. Therefore, according to the ladder of power transformations, a log transformation can be utilized to try to normalize the data.
+
+Log transformation:
+
+```{r}
+s1_A2 <- s1
+s1_A2$Systolic_1_log <- log(s1_A2$Systolic_1)
+```
+
+Check the normality assumption again:
+
+```{r fig.height=5, fig.width=10}
+# Histogram for Sys_1 by sex
+p1 <- ggplot(s1_A2, aes(x = Systolic_1_log, fill = BiologicalSex)) +
+  geom_histogram(binwidth = 0.1, color = "black", alpha = 0.5) +
+  labs(title = "Histogram of Log Systolic Blood Pressure by BiologicalSex", 
+       x = "Log Systolic Blood Pressure (log(mmHg))", y = "Frequency") +
+  theme_minimal() + 
+  theme(plot.title = element_text(size = 9))
+
+# Q-Q Plot by gender
+p2 <- ggplot(s1_A2, aes(sample = Systolic_1_log, color = BiologicalSex)) +
+  geom_qq() +
+  geom_qq_line() +
+  labs(title = "Q-Q Plot of Log Systolic Blood Pressure by BiologicalSex") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9)) 
+
+p1 + p2
+```
+
+This is better, but perhaps we can try a reciprocal transformation to further reduce the skew.
+
+Reciprocal transform:
+
+```{r}
+s1_A2$Systolic_1_reciprocal <- 1 / s1_A2$Systolic_1
+```
+
+Check normality:
+
+```{r fig.height=5, fig.width=10}
+# Histogram for Sys_1 by sex
+p1 <- ggplot(s1_A2, aes(x = Systolic_1_reciprocal, fill = BiologicalSex)) +
+  geom_histogram(binwidth = 0.05, color = "black", alpha = 0.5) +
+  labs(title = "Histogram of Systolic Blood Pressure by BiologicalSex", 
+       x = "Systolic Blood Pressure (mmHg)", y = "Frequency") +
+  theme_minimal() + 
+  theme(plot.title = element_text(size = 9))
+
+# Q-Q Plot by gender
+p2 <- ggplot(s1_A2, aes(sample = Systolic_1_reciprocal, color = BiologicalSex)) +
+  geom_qq() +
+  geom_qq_line() +
+  labs(title = "Q-Q Plot of Systolic Blood Pressure by BiologicalSex") +
+  theme_minimal() +
+  theme(plot.title = element_text(size = 9)) 
+
+p1 + p2
+```
+
+While the Q-Q plot for this transformation better aligns with the predicted trend line, I am not sure that the data makes meaningful sense after conducting a reciprocal transformation. The range of the systolic blood pressure\^-1 values have a very narrow range and would not make much sense to interpret. Furthermore, the data is still deviating from the trend line on the Q-Q plot at higher and lower values. Therefore, we cannot meet the normality condition in this circumstance and will thus need to employ bootstrapping methods to compute the confidence interval.
+
+### Bootstrap results
+
+Load bootstrap algorithm from Boost.R
+
+```{r}
+bootdif <- function(y, g, conf.level = 0.90, B.reps = 2000) {
+  lowq = (1 - conf.level) / 2
+  g <- as.factor(g)
+  a <- attr(Hmisc::smean.cl.boot(y[g == levels(g)[1]], B = B.reps, reps = TRUE), 'reps')
+  b <- attr(Hmisc::smean.cl.boot(y[g == levels(g)[2]], B = B.reps, reps = TRUE), 'reps')
+  meandif <- mean(y[g == levels(g)[1]], na.rm = TRUE) - mean(y[g == levels(g)[2]], na.rm = TRUE)
+  a_b <- quantile(a - b, c(lowq, 1 - lowq))
+  res <- c(meandif, a_b)
+  names(res) <- c('Mean Difference', lowq, 1 - lowq)
+  res
+}
+```
+
+```{r}
+set.seed (2024)
+s1 %$% bootdif(y = Systolic_1, g = BiologicalSex, conf.level = 0.90, B.reps = 10000)
+```
+
+## Conclusions
+
+From the bootstrapping method, the predicted 90% confidence interval for the difference in systolic blood pressure between males and females was (4.9, 6.4) mmHg. As this interval does not contain zero and is entirely positive, there is evidence that males tend to have higher systolic blood pressure than females. Therefore, we reject the null hypothesis that systolic blood pressure is the same across biological sexes.
+
+Given that this result aligns with the pre-existing belief that males may have higher blood pressure on average due to physiological differences, a logical next step would be to investigate potential underlying factors contributing to this difference, such as age, lifestyle, or genetic predispositions. Further exploration of these factors could help identify whether other variables confound with the high systolic blood pressure observed in males.
+
+# Analysis C: Compare 6 means with independent samples
+
+## Question
+
+This analysis will aim to answer the question, does systolic blood pressure vary across different race and ethnicity groups of adults in the United States from 2017 to pre-pandemic 2020? It is already known that certain genes, like sickle cell anemia, and illnesses, like cardiovascular disease, have different prevalence rates in countries around the world. In this case, we are trying to determine whether systolic blood pressure can also be inherited and thereby lead to different prevalence rates across race categories in the US. We hypothesize that the mean systolic blood pressure will be different across race groups.
+
+H0: The mean systolic blood pressure is the same across all racial groups. 
+
+
+HA: The mean systolic blood pressure differs between at least two racial groups.
+
+## Describing the data
+
+The dataset includes systolic blood pressure measurements (in mmHg) (Systolic_1) across six racial categories listed below.
+
+```{r}
+levels(s1$Race)
+```
+
+Visualize the distribution of systolic blood pressure by race:
+
+```{r}
+ggplot(s1, aes(x = Race, y = Systolic_1)) + 
+  geom_violin(fill = "lightblue", color = "black", alpha = 0.3) +   
+  geom_boxplot(fill = "lightblue", color = "black") +
+  labs(title = "Systolic Blood Pressure Across Racial Groups", 
+       x = "Race", y = "Systolic Blood Pressure (mmHg)") +
+  theme_minimal()
+```
+
+Numerical distributions
+
+```{r}
+# Filter by Race categories
+mexican_american <- s1 %>% filter(Race == "Mexican American")
+other_hispanic <- s1 %>% filter(Race == "Other Hispanic")
+non_hispanic_white <- s1 %>% filter(Race == "Non-Hispanic White")
+non_hispanic_black <- s1 %>% filter(Race == "Non-Hispanic Black")
+non_hispanic_asian <- s1 %>% filter(Race == "Non-Hispanic Asian")
+other <- s1 %>% filter(Race == "Other")
+
+# Check the distribution for each group using lovedist()
+lovedist(mexican_american$Systolic_1)
+lovedist(other_hispanic$Systolic_1)
+lovedist(non_hispanic_white$Systolic_1)
+lovedist(non_hispanic_black$Systolic_1)
+lovedist(non_hispanic_asian$Systolic_1)
+lovedist(other$Systolic_1)
+```
+
+At first glance the distributions for systolic blood pressure across different racial groups is very similar, as seen in the violin plot. However, there are slight differences in the mean. Looking at the numerical statistics, we can see that most of the means for systolic blood pressure are \~ 122 mmHg, however, the non-Hispanic Black group has a higher mean at 128.6 mmHg.The second highest is that of the other Hispanic group with 124.1 mmHg. Therefore, initially it seems like there is a difference in means for systolic blood pressure for both non-Hispanic Black and the other Hispanics group. Furthermore, all of these distributions are right skewed and have a number of higher outliers.
+
+## Main analysis
+
+To assess whether systolic blood pressure significantly differs across the six racial groups, we will use one-way ANOVA at 90% confidence.
+
+### Check assumptions of ANOVA
+
+Observations for systolic blood pressure in each group are independent of each other.
+
+Check normality using Q-Q plots
+
+```{r}
+# Mexican American
+qq_mx <- ggplot(mexican_american, aes(sample = Systolic_1)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Mexican American")
+
+# Other Hispanic
+qq_oh <- ggplot(other_hispanic, aes(sample = Systolic_1)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Other Hispanic")
+
+# Non-Hispanic White
+qq_nhw <- ggplot(non_hispanic_white, aes(sample = Systolic_1)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Non-Hispanic White")
+
+# Non-Hispanic Black
+qq_nhb <- ggplot(non_hispanic_black, aes(sample = Systolic_1)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Non-Hispanic Black")
+
+# Non-Hispanic Asian
+qq_nha <- ggplot(non_hispanic_asian, aes(sample = Systolic_1)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Non-Hispanic Asian")
+
+# Other
+qq_other <- ggplot(other, aes(sample = Systolic_1)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Other")
+
+# Combine all the plots
+qq_plots_grid <- (qq_mx | qq_oh | qq_nhw) / 
+                 (qq_nhb | qq_nha | qq_other)
+
+# Display the combined plots
+qq_plots_grid
+```
+
+As we can see, all of the observed lines deviate from the expected trend line for a Q-Q plot. Therefore, the data has to be transformed to try to satisfy the normality condition.
+
+Log transform:
+
+```{r}
+s1_A3 <- s1
+s1_A3$Systolic_1_log <- log(s1$Systolic_1)
+
+mexican_american <- s1_A3 %>% filter(Race == "Mexican American")
+other_hispanic <- s1_A3 %>% filter(Race == "Other Hispanic")
+non_hispanic_white <- s1_A3 %>% filter(Race == "Non-Hispanic White")
+non_hispanic_black <- s1_A3 %>% filter(Race == "Non-Hispanic Black")
+non_hispanic_asian <- s1_A3 %>% filter(Race == "Non-Hispanic Asian")
+other <- s1_A3 %>% filter(Race == "Other")
+```
+
+Check again:
+
+```{r}
+# Mexican American
+qq_mx <- ggplot(mexican_american, aes(sample = Systolic_1_log)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Mexican American")
+
+# Other Hispanic
+qq_oh <- ggplot(other_hispanic, aes(sample = Systolic_1_log)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Other Hispanic")
+
+# Non-Hispanic White
+qq_nhw <- ggplot(non_hispanic_white, aes(sample = Systolic_1_log)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Non-Hispanic White")
+
+# Non-Hispanic Black
+qq_nhb <- ggplot(non_hispanic_black, aes(sample = Systolic_1_log)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Non-Hispanic Black")
+
+# Non-Hispanic Asian
+qq_nha <- ggplot(non_hispanic_asian, aes(sample = Systolic_1_log)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Non-Hispanic Asian")
+
+# Other
+qq_other <- ggplot(other, aes(sample = Systolic_1_log)) + 
+  stat_qq() + 
+  stat_qq_line() + 
+  ggtitle("Q-Q Plot for Other")
+
+# Combine all the plots
+qq_plots_grid <- (qq_mx | qq_oh | qq_nhw) / 
+                 (qq_nhb | qq_nha | qq_other)
+
+# Display the combined plots
+qq_plots_grid
+```
+
+Transforming the data improves the observed distribution enough to match the expected trend line of the Q-Q plot. While there are some small deviations at the extremes, they are not severe enough to say that the normality assumption is not met.
+
+Check for equal distribution of variances:
+
+```{r}
+#Levene's Test for homogeneity of variances
+leveneTest(Systolic_1_log ~ Race, data = s1_A3)
+```
+
+Here, a very small p-value was observed (1.3e-11) and was significant at \*\*\* (i.e. \< 0). Therefore, this means that the variances across the groups for systolic blood pressure are significantly different. Therefore, we cannot use an ANOVA test.
+
+An alternative method would be the Welch's ANOVA test, which does not require equal variances.
+
+```{r}
+oneway.test(Systolic_1_log ~ Race, data = s1_A3, var.equal = FALSE)
+```
+
+Run Tukey HSD for pos-hoc analysis:
+
+```{r}
+model <- aov(Systolic_1_log ~ Race, data = s1_A3) 
+tukey <- tidy(TukeyHSD(model), ordered=TRUE, conf.level=0.90)
+
+# Display the results of Tukey HSD pairwise comparisons
+tukey %>%
+  select(-null.value) %>%
+  kable(digits = 3, caption = "Tukey's HSD Pairwise Comparisons for Log Systolic Blood Pressure Across Race Groups") %>%
+  kable_styling()
+```
+
+## Conclusions
+
+In the ANOVA test, the p-value was less than 2.2e-16, indicating statistical significance. This provides strong evidence to reject the null hypothesis that the mean log-transformed systolic blood pressure is the same across different racial groups.
+
+To further investigate, we conducted a Tukey HSD post-hoc test to perform pairwise comparisons of mean log systolic blood pressure between groups. Among these comparisons, all involving the Non-Hispanic Black group were statistically significant (adjusted p-value \< 0.000). This provides evidence that systolic blood pressure among Non-Hispanic Black adults in the US from 2017 to pre-pandemic 2020 was higher compared to other racial groups. Furthermore, the largest absolute differences in pairwise comparisons were observed between the Non-Hispanic Black group and both Non-Hispanic Asians and Mexican Americans, with an estimated difference of 0.050 log(mmHg).
+
+One way to further investigate these differences is to develop a linear regression model incorporating relevant variables, such as socioeconomic status, healthcare access, dietary habits, stress levels, and genetic factors, if available. By doing so, we can identify which factors contribute most to the observed disparities in systolic blood pressure and create the best-fitting model to explain these variations.
+
+# Analysis D: Create and analyze a 2 X 2 table
+
+## Question
+
+In this analysis, we will aim to answer the question, is there an association between obesity and hypertension among adults, and how does the risk of hypertension differ between adults who are obese versus those who are not? Again, the results will be applicable to adults in the United States between 2017 - 2020 pre-pandemic. We expect that adults who are obese will have a significantly higher prevalence of hypertension compared to those who are not obese. This is because obese people will have higher vascular resistance, higher blood volume, and more hormonal changes that will contribute to developing hypertension.
+
+HO: There is no association between obesity and hypertension. The risk of hypertension is the same for obese and non-obese individuals.
+
+HA: There is an association between obesity and hypertension. The risk of hypertension differs between obese and non-obese individuals.
+
+Mathematically,
+
+H0: Relative Risk (RR) = 1 Odds Ratio (OR) = 1 Risk Difference (RD) = 0
+
+HA: Relative Risk (RR) \> 1 Odds Ratio (OR) \> 1 Risk Difference (RD) \> 0
+
+## Describing the data
+
+For this analysis, the Hypertension and Obese variables will be used. Hypertension is a categorical variable that is has a value of Yes if a person was ever diagnosed with hypertension. On the other hand Obese describes whether a person has a BMI of over 30. It is a categorical variable that has a value of Yes if BMI \> 30.
+
+Numerical distribution using a contingency table:
+
+```{r}
+cat("Contingency Table for Obesity vs Hypertension\n")
+table <- table(s1$Obese, s1$Hypertension)
+colnames(table) <- c("Hypertension: Yes", "No")
+rownames(table) <- c("Obese: Yes", "No")
+
+addmargins(table)
+```
+
+Through the numerical summary we can see that a total of 6999 observations exist. A few missing values have been cut from our analysis, which is further analyzed below. Of these people 3046 people were considered obese and 2637 had been diagnosed with hypertension. In total, 1441 people were both obese and had hypertension.
+
+Visualize the distribution using a bar plot:
+
+```{r}
+ggplot(s1, aes(x = Obese, fill = Hypertension)) +
+  geom_bar(position = "fill") +
+  labs(title = "Proportion of Hypertension by Obesity Status",
+       x = "Obesity Status",
+       y = "Proportion",
+       fill = "Hypertension Status") +
+  theme_minimal()
+```
+
+```{r}
+sum(is.na(s1$Hypertension))
+sum(is.na(s1$Obese))
+```
+
+Through this barplot we can see that a greater fraction of those who are obese have hypertension (\~ 48%) than those that are not obese (\~20%). Furthermore, there are some missing values for both categories. Only 8 people have no data on their hypertension status, while 53 people lack data on their BMI, and therefore their obesity status. However, together only 61 individuals will be excluded from this analysis.
+
+## Main analysis
+
+We can use a contingency table to conduct analysis as all assumptions are met. Observations are independent from each other. Both variables are categorical and binary. Furthermore, we have a large sample size.
+
+Import the twobytwo function
+
+```{r}
+`twobytwo` <-
+  function(a,b,c,d, namer1 = "Row1", namer2 = "Row2", namec1 = "Col1", namec2 = "Col2", 
+           conf.level = 0.90)
+    # build 2 by 2 table and run Epi library's twoby2 command to summarize
+    # from the row-by-row counts in a cross-tab
+    # upper left cell is a, upper right is b, lower left is c, lower right is d
+    # names are then given in order down the rows then across the columns
+    # use standard epidemiological format - outcomes in columns, treatments in rows
+  {
+    .Table <- matrix(c(a, b, c, d), 2, 2, byrow=T, dimnames=list(c(namer1, namer2), c(namec1, namec2)))
+    Epi::twoby2(.Table, alpha = 1 - conf.level)
+  }
+```
+
+Construct a 2X2 table and run analysis
+
+```{r}
+# Need to remove NAs, otherwise the twobytwo function will not work
+s1_A4 <- s1 %>% filter(!is.na(Obese) & !is.na(Hypertension))
+
+# Calculate inputs for twobytwo
+a <- sum(s1_A4$Obese == "Yes" & s1_A4$Hypertension == "Yes") # Obese Yes, Hypertension Yes
+b <- sum(s1_A4$Obese == "No" & s1_A4$Hypertension == "Yes")  # Obese No, Hypertension Yes
+c <- sum(s1_A4$Obese == "Yes" & s1_A4$Hypertension == "No")  # Obese Yes, Hypertension No
+d <- sum(s1_A4$Obese == "No" & s1_A4$Hypertension == "No")   # Obese No, Hypertension No
+
+# Run the twobytwo function
+twobytwo(a, b, c, d, 
+         namer1 = "Obese: Yes", 
+         namer2 = "Obese: No", 
+         namec1 = "Hypertension: Yes", 
+         namec2 = "Hypertension: No", 
+         conf.level = 0.90)
+```
+
+## Conclusions
+
+Using a 2X2 table, we were able to calculate a number of statistics pertaining to the distribution of hypertension and obesity in adults in the US from 2017 to pre-pandemic 2020.
+
+First, the relative risk was 1.4851, with a 90% confidence interval of \[1.4215, 1.5516\]. This interval does not include 1, which indicates a statistically significant increased risk of hypertension among obese individuals compared to non-obese individuals. This means that obese individuals are approximately 48.5% more likely to develop hypertension compared to other people that are not obese.
+
+Next, the odds ration was 2.0696, with a 90% confidence interval of \[1.9057, 2.2476\]. Again, this interval did not include 1, therefore showing a strong association between obesity and hypertension. The odds of developing hypertension are approximately 2.07 times higher in obese individuals compared to those that are not obese
+
+The risk difference was 0.17855, with a 90% confidence interval of \[0.1585, 0.1984\]. Since the interval does not include 0, this also supports a statistically significant association. This means that the absolute increase in the probability of hypertension for obese individuals compared to non-obese individuals is approximately 17.85%.
+
+Finally, the both the exact and asymptotic p-values are 0.00, indicating strong evidence against the null hypothesis, therefore rejecting it. Overall, there is a statistically significant association between obesity and hypertension. Obese individuals have a higher risk and odds of developing hypertension compared to non-obese individuals.
+
+One future direction for analysis would be to examine the effect of additional variables that may influence the relationship between obesity and hypertension. Factors such as socioeconomic status, reported income levels, and the level of education could be also associated with the two variables. Multivariate models could be used to adjust for these potential confounding variables and can explore their interactions with obesity and hypertension.
+
+# Session Information
+
+```{r}
+xfun::session_info()
+```

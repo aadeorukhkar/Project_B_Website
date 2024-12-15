@@ -1,0 +1,30 @@
+---
+about:
+  template: jolla
+  id: about-block
+  image: "img/aryahi.jpeg"
+  links:
+    - icon: github
+      text: Github
+      href: https://github.com/aadeorukhkar
+    - icon: linkedin
+      text: LinkedIn
+      href: https://www.linkedin.com/in/aryahi-deorukhkar-3b367b1b9/
+    - icon: envelope
+      text: Email
+      href: "mailto:aad152@case.edu"  
+---
+
+::: {#about-block}
+:::
+
+# Aryahi Deorukhkar
+## Welcome to my website!
+
+Hello, I am Aryahi, an undergraduate student at Case Western Reserve University. I come from a quite culturally diverse background, having lived in India, Germany, and now the United States. I am currently a senior majoring in Biochemistry with specializations in cancer biology, quantitative health science, and metabolism. I hope to go to grad school next year and pursue a PhD in genomics and bioinformatics. 
+
+In grad school, I aim to further analyze large genetic datasets and find insightful conclusions about health and disease. To do this, I want to create new bioinformatics techniques that can be used for sequencing data. RNA biology is another exciting field that I am interested in. We can take advantage of the dual function of RNA as an information-carrying molecule with enzymatic properties to regulate gene expression.
+
+I hope that this website is informative for you to get to know more about me and my scholarly interests! Please contact me on my email for further inquiries or questions.
+
+
