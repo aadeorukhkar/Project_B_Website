@@ -21,10 +21,10 @@ website:
         href: interests/interests.qmd
       - text: "CV"
         href: cv/cv.qmd
-      - text: "Dashboard"
-        href: dashboard/app.R
       - text: "Blog"
         href: blog/blog.qmd
+      - text: "Dashboard"
+        href: dashboard/app.R
 
     
     # your social media handles
